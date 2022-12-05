@@ -1,0 +1,90 @@
+#include <stdio.h>
+#include <curses.h>
+#include <unistd.h>
+#include <vector>
+
+#if defined(NCURSES_EXT_FUNCS) && NCURSES_EXT_FUNCS >= 20081102
+#ifdef HAVE_SET_ESCDELAY_FUNC
+	set_escdelay(0);
+#endif
+#endif
+
+int kbhit(void)
+{
+	int ch = getch();
+	
+	if (ch != ERR) { return ch; }
+	else { return 0; }
+}
+
+int main(void)
+{
+	char num[] = "123456";
+	int size = strlen(num);	
+	initscr();
+	clear();
+	cbreak();
+	scrollok(stdscr, true);
+	noecho();
+	keypad(stdscr, TRUE);
+	nodelay(stdscr, TRUE);
+	mvprintw(LINES/2, COLS/2-size/2, "%s", num);
+	getch();
+	wmove(stdscr,LINES/2, COLS/2-size/2);
+   	wrefresh(stdscr);
+	int c = 1, i  =  0;
+
+	start_color();
+	init_pair(1,COLOR_GREEN,COLOR_WHITE);
+	init_pair(2,COLOR_YELLOW,COLOR_BLACK);
+	init_pair(3,COLOR_MAGENTA,COLOR_WHITE);
+	init_pair(4,COLOR_CYAN,COLOR_BLACK);
+	init_pair(5,COLOR_RED,COLOR_WHITE);
+	init_pair(6,COLOR_BLUE,COLOR_WHITE);
+
+	while (c != 27)
+	{
+		while (1)
+		{
+			int ch = kbhit();
+			if (ch != 0)
+			{
+				switch (ch) {
+				case 27:
+				{ return 0; }
+				case 32:
+				{
+					if (c % 6 == 0)
+					{
+						c = 0; i = 0;
+					}
+					mvprintw(LINES/2, COLS/2-size/2, "%s", num);
+					//getch();
+					mvchgat(LINES/2,COLS/2-size/2 + c, 1, A_NORMAL, c, NULL);
+					wmove(stdscr,LINES/2, COLS/2-size/2 + c);
+   					wrefresh(stdscr);
+					c++;
+					i++;
+				}
+				}	
+			}
+			else
+			{
+				int m = c - 1;
+				mvprintw(LINES/2, COLS/2-size/2 + m, "%c", num[m]);
+				mvchgat(LINES/2,COLS/2-size/2 + m, 1, A_NORMAL, m, NULL);
+				wmove(stdscr,LINES/2, COLS/2-size/2 + m);
+				wrefresh(stdscr);
+				//getch();
+				usleep(500000);
+				mvprintw(LINES/2, COLS/2-size/2 + m, " ");
+				mvchgat(LINES/2,COLS/2-size/2 + m, 1, A_NORMAL, m, NULL);
+				wmove(stdscr,LINES/2, COLS/2-size/2 + m);
+				wrefresh(stdscr);
+				//getch();
+				usleep(500000);
+			}
+		}
+	}
+	return 0;
+}
