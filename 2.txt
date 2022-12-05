@@ -1,0 +1,49 @@
+#include <stdio.h>
+#include <curses.h>
+#include <unistd.h>
+#include <vector.h>
+
+#if defined(NCURSES_EXT_FUNCS) && NCURSES_EXT_FUNCS >= 20081102
+#ifdef HAVE_SET_ESCDELAY_FUNC
+	set_escdelay(0);
+#endif
+#endif
+
+
+int main(void)
+{
+	//vector <int> numbers = {1,2,3,4,5,6};
+	char num[] = "123456";
+	int size = numbers.size();
+	initscr();
+	clear();
+	nocbreak();
+	noecho();
+	keypad(stdscr, TRUE);
+	for (int i = 0; i < size; i++)
+	{
+		mvprintw(LINES/2, COLS/2-size/2, "%d", numbers[i]);
+	}
+	wmove(stdscr,LINES/2, COLS/2-size/2);
+   	wrefresh(stdscr);
+	int c = 0;
+	while (c != 27)
+	{
+		nodelay(stdscr, TRUE);
+		int ch = getch();
+		switch (ch) {
+		case 27:
+		{
+			return 0;
+		}
+		case 32:
+		{
+			if (c % 6 == 0)
+				с = 1;
+			wmove(stdscr,LINES/2, COLS/2-size/2 + c);
+   			wrefresh(stdscr);
+			c++;
+		}
+	}
+	return 0;
+}
