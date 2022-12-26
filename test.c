@@ -14,11 +14,13 @@ set_escdelay(0);
 #endif
 #endif
 
+#define DELAYSIZE 200
+
 using namespace std;
 bool trans = false;
 bool filling = false;
 bool buck3pressed = false; //third bucket selection detect
-bool instantTransition = false; //instant water transition switcher
+bool instantTransfusion = false; //instant water transfusion switcher
 int buck1 = 0, buck2 = 0, buck3 = 0; //current size values
 int wincond = 0; //victory condition
 int buckcont1 = 7, buckcont2 = 3, buckcont3 = 9; //bucket size values
@@ -28,15 +30,23 @@ vector<char*>protocol;
 void printwincond()
 {
     mvprintw(0, 0, "3rd bucket should have: %d amount of water", wincond);
+    if (instantTransfusion)
+	mvprintw(1, 0, "transfusion is instant ");
+    else
+	mvprintw(1, 0, "transfusion is animated");
 }
 
 void printprotocol()
 {
     int size = protocol.size();
-    int i = 0;
-    if (size > 23) i = 22;
-    for (; i < size; i++)
-    mvprintw(i+1, protocolX, "%s\n", protocol[i]);
+    int pos = 1;
+    for (int i = 0; i < size; i++)
+    {
+       if (i % 22 == 0)
+          pos = 1;
+       mvprintw(pos, protocolX, "%s\n", protocol[i]);
+       pos++;
+    }
 }
 
 void drawbuck()
@@ -80,6 +90,8 @@ void drawbuck()
     {
         mvchgat(i, 24, 1, A_NORMAL, 2, NULL);
     }
+    mvchgat(20 - wincond, 23, 1, A_NORMAL, 3, NULL);
+    mvchgat(20 - wincond, 25, 1, A_NORMAL, 3, NULL);
 //print
     printwincond();
     printprotocol();
@@ -101,7 +113,7 @@ void addwater(int buckind, int buck)
                     break;
                 buck3++;
                 buck1--;
-		if (!instantTransition)
+		if (!instantTransfusion)
 	    	{
 			clear();
 	    		drawbuck();
@@ -134,7 +146,7 @@ void addwater(int buckind, int buck)
                     break;
                 buck3++;
                 buck2--;
-	    	if (!instantTransition)
+	    	if (!instantTransfusion)
 	    	{
 			clear();
 	    		drawbuck();
@@ -189,7 +201,7 @@ void addwaterFrom3(int buckind)
                 break;
             buck3--;
             buck1++;
-	    if (!instantTransition)
+	    if (!instantTransfusion)
 	    {
 		clear();
 	    	drawbuck();
@@ -208,7 +220,7 @@ void addwaterFrom3(int buckind)
                 break;
             buck3--;
             buck2++;
-	    if (!instantTransition)
+	    if (!instantTransfusion)
 	    {
 		clear();
 	    	drawbuck();
@@ -220,6 +232,134 @@ void addwaterFrom3(int buckind)
         break;
     }
     }
+}
+
+void resetbucket ()
+{
+    clear();
+    drawbuck();
+    printwincond();
+    printprotocol();
+}
+
+short colors[] =
+{
+    COLOR_RED, COLOR_BLUE, COLOR_GREEN, COLOR_CYAN,
+    COLOR_RED, COLOR_MAGENTA, COLOR_YELLOW, COLOR_WHITE
+};
+
+void refreshfield(void)
+{
+    napms(DELAYSIZE);
+    wmove(stdscr, LINES - 1, COLS - 1);
+    refresh();
+}
+
+void color(void)
+{
+    chtype bold = (rand() % 2) ? A_BOLD : A_NORMAL;
+    attrset(COLOR_PAIR(rand() % 8) | bold);
+}
+
+void explosion(int row, int col)
+{
+    erase();
+    mvaddstr(row, col, "-");
+    refreshfield();
+
+    --col;
+
+    color();
+    mvaddstr(row - 1, col, " - ");
+    mvaddstr(row,     col, "-+-");
+    mvaddstr(row + 1, col, " - ");
+    refreshfield();
+
+    --col;
+
+    color();
+    mvaddstr(row - 2, col, " --- ");
+    mvaddstr(row - 1, col, "-+++-");
+    mvaddstr(row,     col, "-+#+-");
+    mvaddstr(row + 1, col, "-+++-");
+    mvaddstr(row + 2, col, " --- ");
+    refreshfield();
+
+    color();
+    mvaddstr(row - 2, col, " +++ ");
+    mvaddstr(row - 1, col, "++#++");
+    mvaddstr(row,     col, "+# #+");
+    mvaddstr(row + 1, col, "++#++");
+    mvaddstr(row + 2, col, " +++ ");
+    refreshfield();
+
+    color();
+    mvaddstr(row - 2, col, "  #  ");
+    mvaddstr(row - 1, col, "## ##");
+    mvaddstr(row,     col, "#   #");
+    mvaddstr(row + 1, col, "## ##");
+    mvaddstr(row + 2, col, "  #  ");
+    refreshfield();
+
+    color();
+    mvaddstr(row - 2, col, " # # ");
+    mvaddstr(row - 1, col, "#   #");
+    mvaddstr(row,     col, "     ");
+    mvaddstr(row + 1, col, "#   #");
+    mvaddstr(row + 2, col, " # # ");
+    refreshfield();
+}
+
+void fireworks()
+{
+    time_t seed;
+    int start, end, row, diff, flag, direction;
+    short i;
+    for (i = 0; i < 8; i++)
+        init_pair(i, colors[i], COLOR_BLACK);
+
+    seed = time((time_t *)0);
+    srand(seed);
+    flag = 0;
+    
+    //while (getch() == ERR)
+    for (int i = 0; i < 5; i++)
+    {
+        do {
+            start = rand() % (COLS - 3);
+            end = rand() % (COLS - 3);
+            start = (start < 2) ? 2 : start;
+            end = (end < 2) ? 2 : end;
+            direction = (start > end) ? -1 : 1;
+            diff = abs(start - end);
+
+        } while (diff < 2 || diff >= LINES - 2);
+
+        attrset(A_NORMAL);
+
+        for (row = 0; row < diff; row++)
+        {
+            mvaddstr(LINES - row, row * direction + start,
+                (direction < 0) ? "\\" : "/");
+
+            if (flag++)
+            {
+                refreshfield();
+                erase();
+                flag = 0;
+            }
+        }
+
+        if (flag++)
+        {
+            refreshfield();
+            flag = 0;
+        }
+
+        explosion(LINES - row, diff * direction + start);
+        erase();
+        refreshfield();
+     }
 }
 
 int kbhit(void)
@@ -239,13 +379,17 @@ int main()
     nodelay(stdscr, true);
     init_pair(1, COLOR_WHITE, COLOR_RED);
     init_pair(2, COLOR_WHITE, COLOR_BLUE);
+    init_pair(3, COLOR_BLACK, COLOR_WHITE);
     drawbuck();
     while (1)
     {
         if (buck3 == wincond)
         {
             mvprintw(0, 0, "congrats! you won!\n");
+            wmove(stdscr, LINES - 1, COLS - 1);
             wrefresh(stdscr);
+	    usleep(1000000);
+	    fireworks();
             return 0;
         }
         int ch = kbhit();
@@ -257,8 +401,10 @@ int main()
             {
                 return 0;
             }
-            case 32:
+            case 32: //instant transfusion switcher
             {
+		instantTransfusion ? instantTransfusion = false : instantTransfusion = true;
+		printwincond();
                 break;
             }
             case 49: //1
@@ -285,6 +431,7 @@ int main()
 			addwater(0, buck1);
 			buck1++;
 		     }
+		     drawbuck();
 		   }
 		}
                 else
@@ -315,6 +462,7 @@ int main()
 			addwater(1, buck2);
 			buck2++;
 		     }
+		     drawbuck();
 		   }
 		}
                 else
@@ -326,9 +474,25 @@ int main()
                 buck3pressed = true;
                 break;
             }
-	    case 113: //q (instant transition switcher)
+	    case 101: //e (reset third bucket)
 	    {
-		instantTransition ? instantTransition = false : instantTransition = true;
+		protocol.push_back("water released from 3");
+    		buck3 = 0;
+		resetbucket();
+		break;
+	    }
+	    case 113: //q (reset first bucket)
+	    {
+		protocol.push_back("water released from 1");
+    		buck1 = 0;
+		resetbucket();
+		break;
+	    }
+	    case 119: //w (reset second bucket)
+	    {
+		protocol.push_back("water released from 2");
+    		buck2 = 0;
+		resetbucket();
 		break;
 	    }
 	  }
